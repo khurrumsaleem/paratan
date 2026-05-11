@@ -799,8 +799,8 @@ class TandemMachineBuilder:
         self.material_ns = material_ns
 
         self._bounding_surface = openmc.model.RectangularParallelepiped(
-            xmin=-450, xmax=450, ymin=-450, ymax=450,
-            zmin=-5000, zmax=5000, boundary_type='vacuum'
+            xmin=-700, xmax=700, ymin=-700, ymax=700,
+            zmin=-6500, zmax=6500, boundary_type='vacuum'
         )
         self._room_region = -self._bounding_surface  # Start with full volume
 

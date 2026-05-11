@@ -49,7 +49,8 @@ def parse_simple_machine_input(input_data, material_ns):
         "right_bottleneck_length": vv_info["right_bottleneck_length"],
         "axial_midplane": vv_info.get("axial_midplane", 0.0),
         "structure": vv_info.get("structure", {}),
-        "vacuum_material": getattr(material_ns, "vacuum")
+        "vacuum_material": getattr(material_ns, "vacuum"),
+        "geometry_style": vv_info.get("geometry_style", "axisymmetric"),
     }
 
     # Central cell parameters
@@ -110,18 +111,19 @@ class SimpleVacuumVessel:
         self.room_region = None
         
     def build_vacuum_vessel(self, room_region):
-        """Build the vacuum vessel structure using single_vacuum_vessel_region."""
+        """Build the vacuum vessel (axisymmetric hourglass or perpendicular straight section)."""
         self.room_region = room_region
         
-        # Create main vacuum vessel region using the new function
-        vv_main_region, vv_components = single_vacuum_vessel_region(
+        # Create main vacuum vessel region (see vacuum_vessel.geometry_style in YAML)
+        vv_main_region, _vv_components = simple_mirror_vacuum_vessel_layer_region(
+            self.vv_params["geometry_style"],
             self.vv_params["outer_axial_length"],
-            self.vv_params["central_axial_length"], 
+            self.vv_params["central_axial_length"],
             self.vv_params["central_radius"],
             self.vv_params["bottleneck_radius"],
             self.vv_params["left_bottleneck_length"],
             self.vv_params["right_bottleneck_length"],
-            self.vv_params["axial_midplane"]
+            self.vv_params["axial_midplane"],
         )
         
         # Create main vacuum vessel cell
@@ -148,14 +150,15 @@ class SimpleVacuumVessel:
             for i, (thickness, material) in enumerate(zip(structural_thicknesses, structural_materials)):
                 # Create the full vacuum vessel region at this structural layer's outer radius
                 # Use BOTH updated radii: central_radii[i+1] and bottleneck_radii[i+1]
-                vv_layer_region, _ = single_vacuum_vessel_region(
+                vv_layer_region, _ = simple_mirror_vacuum_vessel_layer_region(
+                    self.vv_params["geometry_style"],
                     self.vv_params["outer_axial_length"],
-                    self.vv_params["central_axial_length"], 
-                    central_radii[i + 1],      # Updated central radius
-                    bottleneck_radii[i + 1],    # Updated bottleneck radius
+                    self.vv_params["central_axial_length"],
+                    central_radii[i + 1],
+                    bottleneck_radii[i + 1],
                     self.vv_params["left_bottleneck_length"],
                     self.vv_params["right_bottleneck_length"],
-                    self.vv_params["axial_midplane"]
+                    self.vv_params["axial_midplane"],
                 )
                 
                 # The structural layer region is the full region minus the previous layer's region

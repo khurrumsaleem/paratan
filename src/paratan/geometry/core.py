@@ -653,11 +653,17 @@ def single_vacuum_vessel_region(outer_axial_length, central_axial_length, centra
     # --- Define Z-planes ---
     central_cylinder_left_plane = openmc.ZPlane(z0=axial_midplane - first_plane_distance)
     central_cylinder_right_plane = openmc.ZPlane(z0=axial_midplane + first_plane_distance)
-    
+
+    # --- Planes for the left cylinder
+    #--- Left outermost plane ---
     left_outer_cylinder_1 = openmc.ZPlane(z0=axial_midplane + left_outermost_plane_distance)
+    #--- Left cone plane ---
     right_outer_cylinder_1 = openmc.ZPlane(z0=axial_midplane - second_plane_distance)
     
+    #--- Planes for the right cylinder ---
+    #--- Right outermost plane ---
     left_outer_cylinder_2 = openmc.ZPlane(z0=axial_midplane + second_plane_distance)
+    #--- Right cone plane ---
     right_outer_cylinder_2 = openmc.ZPlane(z0=axial_midplane + right_outermost_plane_distance)
     
     # --- Define cylinders ---
@@ -711,3 +717,123 @@ def single_vacuum_vessel_region(outer_axial_length, central_axial_length, centra
 
     return vessel_region, components
 
+def perpendicular_vacuum_vessel_region(central_axial_length, central_radius, bottleneck_radius, left_bottleneck_length, right_bottleneck_length, axial_midplane=0.0):
+
+    """
+    Generates an OpenMC region representing a perpendicular vacuum vessel section for one part of a fusion device.
+
+    The geometry is symmetric about an axial midplane and consists of:
+      1. A central cylindrical section.
+      2. A conical taper connecting to an outer bottleneck cylindrical section.
+      3. Thin outer cylindrical sections extending outward.
+
+    Parameters
+    ----------
+    central_axial_length : float
+    """
+    if central_axial_length <= 0 or central_radius <= 0 or bottleneck_radius <= 0:
+        raise ValueError("Radii must be positive.")
+    if left_bottleneck_length <= 0 or right_bottleneck_length <= 0:
+        raise ValueError("Bottleneck lengths must be positive.")
+    if central_radius < bottleneck_radius:
+        raise ValueError("Central radius must be greater than bottleneck radius.")
+
+    first_plane_distance = central_axial_length / 2.0
+
+    right_outermost_plane_distance = first_plane_distance + right_bottleneck_length
+    left_outermost_plane_distance = -first_plane_distance - left_bottleneck_length
+
+    #--- Define Z-planes ---
+    #--- Central left plane ---
+    central_cylinder_left_plane = openmc.ZPlane(z0=axial_midplane - first_plane_distance)
+    #--- Central right plane ---
+    central_cylinder_right_plane = openmc.ZPlane(z0=axial_midplane + first_plane_distance)
+    #--- Left outermost plane ---
+    left_outer_cylinder_1 = openmc.ZPlane(z0=axial_midplane + left_outermost_plane_distance)
+    #--- Left cone plane ---
+    right_outer_cylinder_1 = openmc.ZPlane(z0=axial_midplane - first_plane_distance)
+    #--- Right outermost plane ---
+    left_outer_cylinder_2 = openmc.ZPlane(z0=axial_midplane + first_plane_distance)
+    #--- Right cone plane ---
+    right_outer_cylinder_2 = openmc.ZPlane(z0=axial_midplane + right_outermost_plane_distance)
+    
+    # --- Define cylinders ---
+    central_cell_cylinder = openmc.ZCylinder(r=central_radius)
+    outer_cylinder = openmc.ZCylinder(r=bottleneck_radius)
+    
+    # --- Build regions ---
+    central_cylinder = -central_cell_cylinder & +central_cylinder_left_plane & -central_cylinder_right_plane
+    left_outer_cylinders_region = -outer_cylinder & (+left_outer_cylinder_1 & -right_outer_cylinder_1)
+    right_outer_cylinders_region = -outer_cylinder & (+left_outer_cylinder_2 & -right_outer_cylinder_2)
+    outer_cylinders_region = left_outer_cylinders_region | right_outer_cylinders_region
+    
+    # Full vessel region ---
+    vessel_region = outer_cylinders_region | central_cylinder
+
+    # --- Return region and components for reference ---
+    components = {
+        'central_cylinder': central_cylinder,
+        'left_outer_cylinder': left_outer_cylinders_region,
+        'right_outer_cylinder': right_outer_cylinders_region,
+        'outer_cylinders': outer_cylinders_region,
+    }
+
+    return vessel_region, components
+
+
+# Styles for modular simple-mirror vacuum vessel (YAML: vacuum_vessel.geometry_style).
+SIMPLE_MIRROR_VV_STYLES = frozenset({"axisymmetric", "perpendicular"})
+
+
+def simple_mirror_vacuum_vessel_layer_region(
+    geometry_style,
+    outer_axial_length,
+    central_axial_length,
+    central_radius,
+    bottleneck_radius,
+    left_bottleneck_length,
+    right_bottleneck_length,
+    axial_midplane=0.0,
+):
+    """Return one vacuum-vessel layer (inner volume or scaled structural shell) for the simple mirror.
+
+    Parameters
+    ----------
+    geometry_style : str
+        ``axisymmetric`` — hourglass profile from :func:`single_vacuum_vessel_region` (default).
+        ``perpendicular`` — straight cylindrical/bottleneck profile from
+        :func:`perpendicular_vacuum_vessel_region` (no conical transition). ``outer_axial_length`` is
+        ignored for this style.
+    outer_axial_length, central_axial_length, central_radius, bottleneck_radius,
+    left_bottleneck_length, right_bottleneck_length, axial_midplane
+        Same units and meaning as :func:`single_vacuum_vessel_region`.
+
+    Returns
+    -------
+    tuple
+        ``(region, components)`` from the underlying builder.
+    """
+    style = (geometry_style or "axisymmetric").lower()
+    if style not in SIMPLE_MIRROR_VV_STYLES:
+        raise ValueError(
+            "vacuum_vessel.geometry_style must be one of "
+            f"{sorted(SIMPLE_MIRROR_VV_STYLES)}, got {geometry_style!r}"
+        )
+    if style == "axisymmetric":
+        return single_vacuum_vessel_region(
+            outer_axial_length,
+            central_axial_length,
+            central_radius,
+            bottleneck_radius,
+            left_bottleneck_length,
+            right_bottleneck_length,
+            axial_midplane,
+        )
+    return perpendicular_vacuum_vessel_region(
+        central_axial_length,
+        central_radius,
+        bottleneck_radius,
+        left_bottleneck_length,
+        right_bottleneck_length,
+        axial_midplane,
+    )
