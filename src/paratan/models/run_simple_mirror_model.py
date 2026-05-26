@@ -1,7 +1,7 @@
 import openmc
 import numpy as np
 import matplotlib.pyplot as plt
-import material as m
+from src.paratan.materials.material import *
 from src.paratan.geometry.core import *
 from src.paratan.source.core import *
 from src.paratan.tallies.base_tallies import hollow_mesh_from_domain

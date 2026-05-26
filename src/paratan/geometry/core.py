@@ -782,7 +782,7 @@ def perpendicular_vacuum_vessel_region(central_axial_length, central_radius, bot
 
 
 # Styles for modular simple-mirror vacuum vessel (YAML: vacuum_vessel.geometry_style).
-SIMPLE_MIRROR_VV_STYLES = frozenset({"axisymmetric", "perpendicular"})
+SIMPLE_MIRROR_VV_STYLES = frozenset({"conical", "perpendicular"})
 
 
 def simple_mirror_vacuum_vessel_layer_region(
@@ -800,7 +800,7 @@ def simple_mirror_vacuum_vessel_layer_region(
     Parameters
     ----------
     geometry_style : str
-        ``axisymmetric`` — hourglass profile from :func:`single_vacuum_vessel_region` (default).
+        ``conical`` — hourglass profile from :func:`single_vacuum_vessel_region` (default).
         ``perpendicular`` — straight cylindrical/bottleneck profile from
         :func:`perpendicular_vacuum_vessel_region` (no conical transition). ``outer_axial_length`` is
         ignored for this style.
@@ -813,13 +813,13 @@ def simple_mirror_vacuum_vessel_layer_region(
     tuple
         ``(region, components)`` from the underlying builder.
     """
-    style = (geometry_style or "axisymmetric").lower()
+    style = (geometry_style or "conical").lower()
     if style not in SIMPLE_MIRROR_VV_STYLES:
         raise ValueError(
             "vacuum_vessel.geometry_style must be one of "
             f"{sorted(SIMPLE_MIRROR_VV_STYLES)}, got {geometry_style!r}"
         )
-    if style == "axisymmetric":
+    if style == "conical":
         return single_vacuum_vessel_region(
             outer_axial_length,
             central_axial_length,

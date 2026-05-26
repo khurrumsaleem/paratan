@@ -1,7 +1,7 @@
 import openmc
 import numpy as np
 import matplotlib.pyplot as plt
-import material as m
+from material import *
 from src.paratan.geometry.core import *
 from src.paratan.source.core import *
 import yaml
